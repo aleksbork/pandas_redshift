@@ -156,7 +156,7 @@ def pd_dtype_to_redshift_dtype(dtype):
     elif dtype == 'bool':
         return 'BOOLEAN'
     else:
-        return 'VARCHAR(256)'
+        return 'VARCHAR(MAX)'
 
 
 def get_column_data_types(data_frame, index=False):
@@ -268,6 +268,8 @@ def s3_to_redshift(redshift_table_name, csv_name, delimiter=',', quotechar='"',
 
 def pandas_to_redshift(data_frame,
                        redshift_table_name,
+                       ts_start,
+                       ts_end,
                        column_data_types=None,
                        index=False,
                        save_local=False,
@@ -288,7 +290,8 @@ def pandas_to_redshift(data_frame,
     # Validate column names.
     data_frame = validate_column_names(data_frame)
     # Send data to S3
-    csv_name = '{}-{}.csv'.format(redshift_table_name, uuid.uuid4())
+    #csv_name = '{}-{}.csv'.format(redshift_table_name, uuid.uuid4())
+    csv_name = '{}-{}_{}.csv'.format(redshift_table_name, ts_start, ts_end)
     s3_kwargs = {k: v for k, v in kwargs.items()
         if k in S3_ACCEPTED_KWARGS and v is not None}
     df_to_s3(data_frame, csv_name, index, save_local, delimiter, verbose=verbose, **s3_kwargs)

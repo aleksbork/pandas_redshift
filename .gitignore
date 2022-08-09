@@ -6,3 +6,4 @@ build/
 Pipfile
 Pipfile.lock
 requirements.txt
+.idea
