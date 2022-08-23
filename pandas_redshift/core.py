@@ -159,9 +159,10 @@ def pd_dtype_to_redshift_dtype(dtype):
         return 'VARCHAR(MAX)'
 
 
-def get_column_data_types(data_frame, index=False):
-    column_data_types = [pd_dtype_to_redshift_dtype(dtype.name)
-                         for dtype in data_frame.dtypes.values]
+def get_column_data_types(data_frame, index=False, json_columns=None):
+    # [f(x) if x is not None else '' for x in xs]
+    column_data_types = [pd_dtype_to_redshift_dtype(dtype.name) if col_name not in json_columns else 'SUPER'
+                         for dtype, col_name in zip(data_frame.dtypes.values, data_frame.columns)]
     if index:
         column_data_types.insert(
             0, pd_dtype_to_redshift_dtype(data_frame.index.dtype.name))
@@ -177,6 +178,7 @@ def create_redshift_table(data_frame,
                           distkey='',
                           sort_interleaved=False,
                           sortkey='',
+                          json_columns=None,
                           verbose=True):
     """Create an empty RedShift Table
 
@@ -190,7 +192,7 @@ def create_redshift_table(data_frame,
     else:
         columns = list(data_frame.columns)
     if column_data_types is None:
-        column_data_types = get_column_data_types(data_frame, index)
+        column_data_types = get_column_data_types(data_frame, index, json_columns)
     columns_and_data_type = ', '.join(
         ['{0} {1}'.format(x, y) for x, y in zip(columns, column_data_types)])
 
@@ -285,6 +287,8 @@ def pandas_to_redshift(data_frame,
                        sortkey='',
                        parameters='',
                        verbose=True,
+                       #explicit names for columns, which will be converted to "SUPER" format in redshift
+                       json_columns=None,
                        **kwargs):
 
     # Validate column names.
@@ -300,7 +304,7 @@ def pandas_to_redshift(data_frame,
     if not append:
         create_redshift_table(data_frame, redshift_table_name,
                               column_data_types, index, append,
-                              diststyle, distkey, sort_interleaved, sortkey, verbose=verbose)
+                              diststyle, distkey, sort_interleaved, sortkey, json_columns, verbose=verbose)
 
     # CREATE THE COPY STATEMENT TO SEND FROM S3 TO THE TABLE IN REDSHIFT
     s3_to_redshift(redshift_table_name, csv_name, delimiter, quotechar,
