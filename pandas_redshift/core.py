@@ -11,14 +11,12 @@ import uuid
 import logging
 
 S3_ACCEPTED_KWARGS = [
-    'ACL', 'Body', 'CacheControl ',  'ContentDisposition', 'ContentEncoding', 'ContentLanguage',
+    'ACL', 'Body', 'CacheControl ', 'ContentDisposition', 'ContentEncoding', 'ContentLanguage',
     'ContentLength', 'ContentMD5', 'ContentType', 'Expires', 'GrantFullControl', 'GrantRead',
     'GrantReadACP', 'GrantWriteACP', 'Metadata', 'ServerSideEncryption', 'StorageClass',
     'WebsiteRedirectLocation', 'SSECustomerAlgorithm', 'SSECustomerKey', 'SSECustomerKeyMD5',
     'SSEKMSKeyId', 'RequestPayer', 'Tagging'
 ]  # Available parameters for service: https://boto3.readthedocs.io/en/latest/reference/services/s3.html#S3.Client.put_object
-
-
 
 logging_config = {
     'logger_level': logging.INFO,
@@ -26,6 +24,7 @@ logging_config = {
 }
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
+
 
 def set_log_level(level, mask_secrets=True):
     log_level_map = {
@@ -43,8 +42,8 @@ def set_log_level(level, mask_secrets=True):
 def mask_aws_credentials(s):
     if logging_config['mask_secrets']:
         import re
-        s = re.sub('(?<=access_key_id \')(.*)(?=\')', '*'*8, s)
-        s = re.sub('(?<=secret_access_key \')(.*)(?=\')', '*'*8, s)
+        s = re.sub('(?<=access_key_id \')(.*)(?=\')', '*' * 8, s)
+        s = re.sub('(?<=secret_access_key \')(.*)(?=\')', '*' * 8, s)
     return s
 
 
@@ -221,7 +220,6 @@ def create_redshift_table(data_frame,
 
 def s3_to_redshift(redshift_table_name, csv_name, delimiter=',', quotechar='"',
                    dateformat='auto', timeformat='auto', region='', parameters='', verbose=True):
-
     bucket_name = 's3://{0}/{1}'.format(
         s3_bucket_var, s3_subdirectory_var + csv_name)
 
@@ -268,6 +266,19 @@ def s3_to_redshift(redshift_table_name, csv_name, delimiter=',', quotechar='"',
         raise
 
 
+def _date_converter(ts, is_start=True):
+    """Detects current_date variable and evaluates it, very simple and for
+    the use case of daily upload. TODO: make more complex later"""
+    if 'current_date' in ts:
+        from datetime import date, timedelta
+        today = date.today()
+        if is_start:
+            ts = today + timedelta(days=-1)
+        else:
+            ts = today
+    return ts
+
+
 def pandas_to_redshift(data_frame,
                        redshift_table_name,
                        ts_start,
@@ -287,17 +298,17 @@ def pandas_to_redshift(data_frame,
                        sortkey='',
                        parameters='',
                        verbose=True,
-                       #explicit names for columns, which will be converted to "SUPER" format in redshift
+                       # explicit names for columns, which will be converted to "SUPER" format in redshift
                        json_columns=None,
                        **kwargs):
-
     # Validate column names.
     data_frame = validate_column_names(data_frame)
     # Send data to S3
-    #csv_name = '{}-{}.csv'.format(redshift_table_name, uuid.uuid4())
-    csv_name = '{}-{}_{}.csv'.format(redshift_table_name, ts_start, ts_end)
+    # csv_name = '{}-{}.csv'.format(redshift_table_name, uuid.uuid4())
+    csv_name = '{}-{}_{}.csv'.format(redshift_table_name, _date_converter(ts_start,is_start=True),
+                                     _date_converter(ts_end, is_start=False))
     s3_kwargs = {k: v for k, v in kwargs.items()
-        if k in S3_ACCEPTED_KWARGS and v is not None}
+                 if k in S3_ACCEPTED_KWARGS and v is not None}
     df_to_s3(data_frame, csv_name, index, save_local, delimiter, verbose=verbose, **s3_kwargs)
 
     # CREATE AN EMPTY TABLE IN REDSHIFT
