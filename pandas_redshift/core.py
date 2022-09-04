@@ -218,7 +218,7 @@ def create_redshift_table(data_frame,
     connect.commit()
 
 
-def s3_to_redshift(redshift_table_name, csv_name, iam_role,  delimiter=',', quotechar='"',
+def s3_to_redshift(redshift_table_name, csv_name, rs_iam_role,  delimiter=',', quotechar='"',
                    dateformat='auto', timeformat='auto', region='', parameters='', verbose=True):
     bucket_name = 's3://{0}/{1}'.format(
         s3_bucket_var, s3_subdirectory_var + csv_name)
@@ -228,26 +228,29 @@ def s3_to_redshift(redshift_table_name, csv_name, iam_role,  delimiter=',', quot
         access_key_id '{0}'
         secret_access_key '{1}'
         """.format(aws_1, aws_2)
-    elif aws_role:
+    elif aws_role:  # IAM role for the access to s 3 bucket
         authorization = """
         iam_role '{0}'
         """.format(aws_role)
+    elif rs_iam_role:  # IAM role for the redhsift cluter to access S3 bucket
+        authorization = """
+        iam_role '{0}'
+        """.format(rs_iam_role)
     else:
         authorization = ""
 
     s3_to_sql = """
-    copy {0}
-    from '{1}'
-    iam_role '{2}'
-    delimiter '{3}'
-    ignoreheader 1
-    csv quote as '{4}'
-    dateformat '{5}'
-    timeformat '{6}'
-    {7}
-    {8}
-    """.format(redshift_table_name, bucket_name, iam_role, delimiter, quotechar, dateformat,
-               timeformat, authorization, parameters)
+       copy {0}
+       from '{1}'
+       delimiter '{2}'
+       ignoreheader 1
+       csv quote as '{3}'
+       dateformat '{4}'
+       timeformat '{5}'
+       {6}
+       {7}
+       """.format(redshift_table_name, bucket_name, delimiter, quotechar, dateformat,
+                  timeformat, authorization, parameters)
     logger.info(f"Copy sql:{s3_to_sql}")
     if region:
         s3_to_sql = s3_to_sql + "region '{0}'".format(region)
@@ -285,7 +288,7 @@ def pandas_to_redshift(data_frame,
                        redshift_table_name,
                        ts_start,
                        ts_end,
-                       iam_role="",  # IAM role, used for copy upload operation by redshift cluster"""
+                       rs_iam_role="",  # IAM role, used for copy upload operation by redshift cluster"""
                        column_data_types=None,
                        index=False,
                        save_local=False,
@@ -321,7 +324,7 @@ def pandas_to_redshift(data_frame,
                               diststyle, distkey, sort_interleaved, sortkey, json_columns, verbose=verbose)
 
     # CREATE THE COPY STATEMENT TO SEND FROM S3 TO THE TABLE IN REDSHIFT
-    s3_to_redshift(redshift_table_name, csv_name, iam_role, delimiter, quotechar,
+    s3_to_redshift(redshift_table_name, csv_name, rs_iam_role, delimiter, quotechar,
                    dateformat, timeformat, region, parameters, verbose=verbose)
 
 
