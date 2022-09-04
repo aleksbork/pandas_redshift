@@ -218,7 +218,7 @@ def create_redshift_table(data_frame,
     connect.commit()
 
 
-def s3_to_redshift(redshift_table_name, csv_name, delimiter=',', quotechar='"',
+def s3_to_redshift(redshift_table_name, csv_name, iam_role,  delimiter=',', quotechar='"',
                    dateformat='auto', timeformat='auto', region='', parameters='', verbose=True):
     bucket_name = 's3://{0}/{1}'.format(
         s3_bucket_var, s3_subdirectory_var + csv_name)
@@ -238,15 +238,17 @@ def s3_to_redshift(redshift_table_name, csv_name, delimiter=',', quotechar='"',
     s3_to_sql = """
     copy {0}
     from '{1}'
-    delimiter '{2}'
+    iam_role '{2}'
+    delimiter '{3}'
     ignoreheader 1
-    csv quote as '{3}'
-    dateformat '{4}'
-    timeformat '{5}'
-    {6}
+    csv quote as '{4}'
+    dateformat '{5}'
+    timeformat '{6}'
     {7}
-    """.format(redshift_table_name, bucket_name, delimiter, quotechar, dateformat,
+    {8}
+    """.format(redshift_table_name, bucket_name, iam_role, delimiter, quotechar, dateformat,
                timeformat, authorization, parameters)
+    logger.info(f"Copy sql:{s3_to_sql}")
     if region:
         s3_to_sql = s3_to_sql + "region '{0}'".format(region)
     if aws_token != '':
@@ -283,6 +285,7 @@ def pandas_to_redshift(data_frame,
                        redshift_table_name,
                        ts_start,
                        ts_end,
+                       iam_role="",  # IAM role, used for copy upload operation by redshift cluster"""
                        column_data_types=None,
                        index=False,
                        save_local=False,
@@ -318,7 +321,7 @@ def pandas_to_redshift(data_frame,
                               diststyle, distkey, sort_interleaved, sortkey, json_columns, verbose=verbose)
 
     # CREATE THE COPY STATEMENT TO SEND FROM S3 TO THE TABLE IN REDSHIFT
-    s3_to_redshift(redshift_table_name, csv_name, delimiter, quotechar,
+    s3_to_redshift(redshift_table_name, csv_name, iam_role, delimiter, quotechar,
                    dateformat, timeformat, region, parameters, verbose=verbose)
 
 
