@@ -227,17 +227,18 @@ def s3_to_redshift(redshift_table_name, csv_name, rs_iam_role,  delimiter=',', q
         authorization = """
         iam_role '{0}'
         """.format(rs_iam_role)
-    elif aws_1 and aws_2:
-        authorization = """
+    else:
+        if aws_1 and aws_2:
+            authorization = """
         access_key_id '{0}'
         secret_access_key '{1}'
         """.format(aws_1, aws_2)
-    elif aws_role:  # IAM role for the access to s 3 bucket
-        authorization = """
+        elif aws_role:  # IAM role for the user account to access S3 bucket
+            authorization = """
         iam_role '{0}'
         """.format(aws_role)
-    else:
-        authorization = ""
+        else:
+            authorization = ""
 
     s3_to_sql = """
        copy {0}
