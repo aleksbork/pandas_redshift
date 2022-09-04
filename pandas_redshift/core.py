@@ -223,7 +223,11 @@ def s3_to_redshift(redshift_table_name, csv_name, rs_iam_role,  delimiter=',', q
     bucket_name = 's3://{0}/{1}'.format(
         s3_bucket_var, s3_subdirectory_var + csv_name)
 
-    if aws_1 and aws_2:
+    if rs_iam_role:  # IAM role for the redhsift cluter to access S3 bucket
+        authorization = """
+        iam_role '{0}'
+        """.format(rs_iam_role)
+    elif aws_1 and aws_2:
         authorization = """
         access_key_id '{0}'
         secret_access_key '{1}'
@@ -232,10 +236,6 @@ def s3_to_redshift(redshift_table_name, csv_name, rs_iam_role,  delimiter=',', q
         authorization = """
         iam_role '{0}'
         """.format(aws_role)
-    elif rs_iam_role:  # IAM role for the redhsift cluter to access S3 bucket
-        authorization = """
-        iam_role '{0}'
-        """.format(rs_iam_role)
     else:
         authorization = ""
 
@@ -288,7 +288,7 @@ def pandas_to_redshift(data_frame,
                        redshift_table_name,
                        ts_start,
                        ts_end,
-                       rs_iam_role="",  # IAM role, used for copy upload operation by redshift cluster"""
+                       rs_iam_role="",  # IAM role, used for copy upload operation by redshift cluster
                        column_data_types=None,
                        index=False,
                        save_local=False,
