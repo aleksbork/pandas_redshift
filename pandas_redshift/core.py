@@ -266,6 +266,7 @@ def s3_to_redshift(redshift_table_name, csv_name, rs_iam_role,  delimiter=',', q
         cursor.execute(s3_to_sql)
         connect.commit()
     except Exception as e:
+        print(f"Error during execution of query {s3_to_sql}: {e}")
         logger.error(e)
         traceback.print_exc(file=sys.stdout)
         connect.rollback()
