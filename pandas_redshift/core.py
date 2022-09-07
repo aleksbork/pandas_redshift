@@ -286,8 +286,8 @@ def _date_converter(ts):
         # if both are present
         if interval_idx != -1 and day_idx != -1:
             # find the number of the days in the rest of the string, expecting the only one present
-            digits = int(''.join(filter(str.isdigit, ts[interval_idx:-1])))
-            ts = today + timedelta(days=-digits[0])
+            digit = int(''.join(filter(str.isdigit, ts[interval_idx:-1])))
+            ts = today + timedelta(days=-digit)
         else:
             ts = today
     return ts
