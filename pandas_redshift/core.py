@@ -213,7 +213,7 @@ def create_redshift_table(data_frame,
     if verbose:
         logger.info(create_table_query)
         logger.info('CREATING A TABLE IN REDSHIFT')
-    cursor.execute('drop table if exists {0}'.format(redshift_table_name))
+    cursor.execute('drop table if exists {0};'.format(redshift_table_name))
     cursor.execute(create_table_query)
     connect.commit()
 
@@ -273,14 +273,21 @@ def s3_to_redshift(redshift_table_name, csv_name, rs_iam_role,  delimiter=',', q
         raise
 
 
-def _date_converter(ts, is_start=True):
+def _date_converter(ts):
     """Detects current_date variable and evaluates it, very simple and for
-    the use case of daily upload. TODO: make more complex later"""
+    the use case of daily upload.
+    Expected input:
+    "current_date  +  '18:00-00'::TIMETZ - interval '1 day'"""
     if 'current_date' in ts:
         from datetime import date, timedelta
         today = date.today()
-        if is_start:
-            ts = today + timedelta(days=-1)
+        interval_idx = ts.find('interval')
+        day_idx = ts.find('day')
+        # if both are present
+        if interval_idx != -1 and day_idx != -1:
+            # find the number of the days in the rest of the string, expecting the only one present
+            digits = int(''.join(filter(str.isdigit, ts[interval_idx:-1])))
+            ts = today + timedelta(days=-digits[0])
         else:
             ts = today
     return ts
@@ -313,8 +320,8 @@ def pandas_to_redshift(data_frame,
     data_frame = validate_column_names(data_frame)
     # Send data to S3
     # csv_name = '{}-{}.csv'.format(redshift_table_name, uuid.uuid4())
-    csv_name = '{}-{}_{}.csv'.format(redshift_table_name, _date_converter(ts_start,is_start=True),
-                                     _date_converter(ts_end, is_start=False))
+    csv_name = '{}-{}_{}.csv'.format(redshift_table_name, _date_converter(ts_start),
+                                     _date_converter(ts_end))
     s3_kwargs = {k: v for k, v in kwargs.items()
                  if k in S3_ACCEPTED_KWARGS and v is not None}
     df_to_s3(data_frame, csv_name, index, save_local, delimiter, verbose=verbose, **s3_kwargs)
