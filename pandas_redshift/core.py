@@ -86,6 +86,45 @@ def redshift_to_pandas(sql_query, query_params=None):
     return data
 
 
+def get_defaults(input_type):
+    """Generates defaults for different types of dataframe's columns """
+    default_val = 0
+    if input_type == 'object':
+        default_val = 'na'
+    if input_type == 'str':
+        default_val = 'na'
+    if input_type == 'int':
+        default_val = 0
+    if input_type == 'bool':
+        default_val = False
+    if input_type == 'float':
+        default_val = 0.0
+    return default_val
+
+
+def invalidate_to_schema(raw_df, schema_df=None):
+    """Drop or add columns to make it similar to schema_df.
+    1. If  column_name doesn't exist in  schema_df- drop it;
+    2. If some column name from schema_df is missing - add it, populated by  default values
+    3. Set order of columns in raw_df the same as schema_df"""
+    if len(schema_df.index) == 0 or schema_df is None:
+        # do nothing if there is no schema
+        return raw_df
+    cols_to_drop = []
+    for raw_col_name in raw_df.columns:
+        if raw_col_name not in schema_df.columns:
+            cols_to_drop.append(raw_col_name)
+    raw_df = raw_df.drop(cols_to_drop, axis=1)
+
+    for schema_col_name in schema_df.columns:
+        if schema_col_name not in raw_df.columns:
+            raw_df[schema_col_name] = get_defaults(schema_df[schema_col_name].dtype)
+
+    raw_df = raw_df[schema_df.columns]
+
+    return raw_df
+
+
 def validate_column_names(data_frame):
     """Validate the column names to ensure no reserved words are used.
 
@@ -218,7 +257,7 @@ def create_redshift_table(data_frame,
     connect.commit()
 
 
-def s3_to_redshift(redshift_table_name, csv_name, rs_iam_role,  delimiter=',', quotechar='"',
+def s3_to_redshift(redshift_table_name, csv_name, rs_iam_role, delimiter=',', quotechar='"',
                    dateformat='auto', timeformat='auto', region='', parameters='', verbose=True):
     bucket_name = 's3://{0}/{1}'.format(
         s3_bucket_var, s3_subdirectory_var + csv_name)
@@ -318,6 +357,13 @@ def pandas_to_redshift(data_frame,
                        **kwargs):
     # Validate column names.
     data_frame = validate_column_names(data_frame)
+    # query to grab 1 raw from data table
+    get_schema_sql = f'select * from {redshift_table_name} limit 1'
+
+    schema_df = redshift_to_pandas(get_schema_sql)
+
+    data_frame = invalidate_to_schema(data_frame, schema_df)
+
     # Send data to S3
     # csv_name = '{}-{}.csv'.format(redshift_table_name, uuid.uuid4())
     csv_name = '{}-{}_{}.csv'.format(redshift_table_name, _date_converter(ts_start),
