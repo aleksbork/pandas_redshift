@@ -360,7 +360,9 @@ def pandas_to_redshift(data_frame,
     # query to grab 1 raw from data table
     get_schema_sql = f'select * from {redshift_table_name} limit 1'
 
-    schema_df = redshift_to_pandas(get_schema_sql)
+    schema_df = None
+    if append:
+        schema_df = redshift_to_pandas(get_schema_sql)
 
     data_frame = invalidate_to_schema(data_frame, schema_df)
 
