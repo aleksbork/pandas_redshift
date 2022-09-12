@@ -107,7 +107,7 @@ def invalidate_to_schema(raw_df, schema_df=None):
     1. If  column_name doesn't exist in  schema_df- drop it;
     2. If some column name from schema_df is missing - add it, populated by  default values
     3. Set order of columns in raw_df the same as schema_df"""
-    if len(schema_df.index) == 0 or schema_df is None:
+    if schema_df is None or len(schema_df.index) == 0:
         # do nothing if there is no schema
         return raw_df
     cols_to_drop = []
